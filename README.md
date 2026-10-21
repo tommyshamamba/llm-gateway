@@ -2,6 +2,21 @@
 
 [![ci](https://github.com/tommyshamamba/llm-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/tommyshamamba/llm-gateway/actions/workflows/ci.yml)
 
+## Demo
+
+![Terminal demo: two mock providers; primary returns 503s, recovers, then is killed, with the circuit breaker opening and closing and zero client errors](docs/demo/demo.gif)
+
+Recorded live with the repo's own mock providers (`llm_gateway.mock_server`), with no API keys. 3 load clients, breaker threshold 3 failures, 10 s reset. That run served 2,672 requests with 0 client-visible errors.
+
+| Provider traffic and breaker state | Eval scores and regression gate |
+|---|---|
+| ![traffic per provider](docs/demo/gateway-traffic.png) | ![eval scores](docs/demo/gateway-evals.png) |
+
+- **503s injected at t=8 s:** the primary breaker opened and traffic moved to the fallback within the same second.
+- **Primary healthy at t=20 s:** the breaker stayed open until its reset window ended, then closed at t≈28 s, and traffic returned to the primary.
+- **`kill -9 primary` at t=36 s:** the breaker reopened and the fallback served everything.
+- **Evals:** `smart` scored 100% and `sloppy` 40% on the `basic` suite. `llm-eval compare` flagged swapping `assistant` from mock-smart to mock-sloppy as a −60% regression and exited 1, so CI would block the swap.
+
 An OpenAI-compatible gateway in front of **DeepSeek, OpenAI, Anthropic and Ollama**, with
 provider fallback, retries and per-provider circuit breakers, per-key rate limiting, a response
 cache, streaming (SSE), token and cost accounting, Prometheus metrics, structured JSON logs, and an
