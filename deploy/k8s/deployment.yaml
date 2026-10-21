@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-gateway
+  labels: {app.kubernetes.io/name: llm-gateway}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app.kubernetes.io/name: llm-gateway}
+  strategy:
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: llm-gateway}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: /metrics
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: {app.kubernetes.io/name: llm-gateway}
+      containers:
+        - name: gateway
+          image: ghcr.io/tommyshamamba/llm-gateway:latest
+          args: ["--config", "/etc/llm-gateway/gateway.yaml"]
+          ports: [{name: http, containerPort: 8080}]
+          envFrom:
+            # Create out-of-band, e.g.
+            # kubectl -n llm-gateway create secret generic llm-gateway-secrets \
+            #   --from-literal=DEEPSEEK_API_KEY=... --from-literal=GATEWAY_KEY_DEFAULT=...
+            - secretRef: {name: llm-gateway-secrets, optional: true}
+          resources:
+            requests: {cpu: 250m, memory: 256Mi}
+            limits: {memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: config, mountPath: /etc/llm-gateway, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: config
+          configMap: {name: llm-gateway-config}
+        - name: tmp
+          emptyDir: {}

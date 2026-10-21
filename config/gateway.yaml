@@ -1,0 +1,48 @@
+# Production-style config. Secrets come from env vars named by *_env; never put keys here.
+require_auth: true
+api_keys:
+  - {name: default, key_env: GATEWAY_KEY_DEFAULT, rpm: 600, burst: 60}
+  - {name: batch-evals, key_env: GATEWAY_KEY_EVALS, rpm: 120, burst: 20}
+
+providers:
+  - name: deepseek
+    type: openai
+    base_url: https://api.deepseek.com/v1
+    api_key_env: DEEPSEEK_API_KEY
+    timeout_s: 60
+    pricing:   # USD per 1M tokens; check the provider's current price list
+      deepseek-chat: {input: 0.27, output: 1.10}
+  - name: openai
+    type: openai
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    timeout_s: 60
+    pricing:
+      gpt-4o-mini: {input: 0.15, output: 0.60}
+  - name: anthropic
+    type: anthropic
+    base_url: https://api.anthropic.com
+    api_key_env: ANTHROPIC_API_KEY
+    timeout_s: 60
+    pricing:
+      claude-3-5-haiku-latest: {input: 0.80, output: 4.00}
+  - name: ollama
+    type: ollama
+    base_url: http://ollama:11434
+    timeout_s: 120
+
+routes:
+  chat-default:
+    targets:
+      - {provider: deepseek, model: deepseek-chat}
+      - {provider: openai, model: gpt-4o-mini}
+      - {provider: anthropic, model: claude-3-5-haiku-latest}
+      - {provider: ollama, model: llama3.2:3b}
+  local:
+    targets:
+      - {provider: ollama, model: llama3.2:3b}
+
+breaker: {failure_threshold: 3, reset_timeout_s: 15}
+retry: {attempts_per_provider: 2, backoff_base_s: 0.05, backoff_max_s: 1.0}
+cache: {enabled: true, ttl_s: 300, max_entries: 10000}
+rate_limit: {default_rpm: 600, default_burst: 60}

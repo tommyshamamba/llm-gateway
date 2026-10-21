@@ -1,0 +1,10 @@
+# Requires the Prometheus Operator CRDs. Remove from kustomization.yaml if not installed.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: llm-gateway
+spec:
+  selector:
+    matchLabels: {app.kubernetes.io/name: llm-gateway}
+  endpoints:
+    - {port: http, path: /metrics, interval: 15s}

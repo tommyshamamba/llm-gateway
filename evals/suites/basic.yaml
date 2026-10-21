@@ -1,0 +1,14 @@
+name: basic
+system: "Answer with only the final answer."
+defaults: {temperature: 0, max_tokens: 64}
+cases:
+  - {id: add-small, prompt: "What is 2 + 2?", scorer: numeric, expected: 4, tags: [arith]}
+  - {id: add-3, prompt: "What is 10 + 5?", scorer: numeric, expected: 15, tags: [arith]}
+  - {id: sub, prompt: "What is 100 - 58?", scorer: numeric, expected: 42, tags: [arith]}
+  - {id: mul, prompt: "What is 12 * 12?", scorer: numeric, expected: 144, tags: [arith]}
+  - {id: add-carry, prompt: "What is 27 + 36?", scorer: numeric, expected: 63, tags: [arith]}
+  - {id: add-big, prompt: "What is 1200 + 3?", scorer: numeric, expected: 1203, tags: [arith]}
+  - {id: repeat, prompt: "Repeat exactly: circuit breakers fail fast", scorer: exact, expected: "circuit breakers fail fast", tags: [instruction]}
+  - {id: repeat-contains, prompt: "Repeat back: kubernetes readiness probe", scorer: contains, expected: [readiness, probe], tags: [instruction]}
+  - {id: json-object, prompt: "Return a JSON object with keys ok and model.", scorer: json_valid, expected: [ok, model], tags: [format]}
+  - {id: json-regex, prompt: "Reply in json with an ok field.", scorer: regex, expected: '"ok"\s*:\s*true', tags: [format]}

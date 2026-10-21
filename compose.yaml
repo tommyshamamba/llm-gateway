@@ -1,0 +1,47 @@
+# Local stack: gateway + two fault-injectable mock providers + Ollama.
+#   docker compose up --build
+#   curl localhost:8080/v1/chat/completions -d '{"model":"smart","messages":[{"role":"user","content":"What is 2 + 2?"}]}'
+#   curl -X POST localhost:9001/_faults -d '{"mode":"error","status":503}'   # break primary, watch failover
+# Use the "real" profile to route to Ollama with config/compose-ollama.yaml:
+#   docker compose --profile ollama up --build
+services:
+  gateway:
+    build: .
+    command: ["--config", "/app/config/mock.yaml"]
+    ports: ["8080:8080"]
+    depends_on: [mock-primary, mock-secondary]
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+
+  mock-primary:
+    build: .
+    entrypoint: ["llm-mock-provider", "--port", "9000"]
+    ports: ["9001:9000"]
+    read_only: true
+    cap_drop: [ALL]
+
+  mock-secondary:
+    build: .
+    entrypoint: ["llm-mock-provider", "--port", "9000"]
+    ports: ["9002:9000"]
+    read_only: true
+    cap_drop: [ALL]
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: [ollama]
+    ports: ["11434:11434"]
+    volumes: ["ollama:/root/.ollama"]
+
+  gateway-ollama:
+    build: .
+    profiles: [ollama]
+    command: ["--config", "/app/config/compose-ollama.yaml"]
+    ports: ["8081:8080"]
+    depends_on: [ollama, mock-secondary]
+    read_only: true
+    cap_drop: [ALL]
+
+volumes:
+  ollama: {}

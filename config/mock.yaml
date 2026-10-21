@@ -1,0 +1,14 @@
+# Keyless demo/bench config: two mock upstreams (see llm_gateway.mock_server).
+require_auth: false
+providers:
+  - {name: primary, type: openai, base_url: "http://mock-primary:9000/v1", timeout_s: 2,
+     pricing: {mock-smart: {input: 1.0, output: 2.0}, mock-sloppy: {input: 0.5, output: 1.0}}}
+  - {name: secondary, type: openai, base_url: "http://mock-secondary:9000/v1", timeout_s: 2,
+     pricing: {mock-smart: {input: 1.0, output: 2.0}, mock-sloppy: {input: 0.5, output: 1.0}}}
+routes:
+  smart: {targets: [{provider: primary, model: mock-smart}, {provider: secondary, model: mock-smart}]}
+  sloppy: {targets: [{provider: primary, model: mock-sloppy}, {provider: secondary, model: mock-sloppy}]}
+breaker: {failure_threshold: 3, reset_timeout_s: 10}
+retry: {attempts_per_provider: 1, backoff_base_s: 0.01, backoff_max_s: 0.1}
+cache: {enabled: true, ttl_s: 60, max_entries: 1000}
+rate_limit: {default_rpm: 1000000, default_burst: 100000}

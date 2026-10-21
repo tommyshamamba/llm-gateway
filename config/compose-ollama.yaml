@@ -1,0 +1,10 @@
+# Ollama first, mock as fallback. Pull a model first:
+#   docker compose exec ollama ollama pull llama3.2:1b
+require_auth: false
+providers:
+  - {name: ollama, type: ollama, base_url: "http://ollama:11434", timeout_s: 120}
+  - {name: fallback, type: openai, base_url: "http://mock-secondary:9000/v1", timeout_s: 5}
+routes:
+  local: {targets: [{provider: ollama, model: "llama3.2:1b"}, {provider: fallback, model: mock-smart}]}
+breaker: {failure_threshold: 3, reset_timeout_s: 15}
+retry: {attempts_per_provider: 1}
